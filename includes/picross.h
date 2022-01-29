@@ -6,7 +6,7 @@
 /*   By: gasselin <gasselin@student.42quebec.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/01/28 18:27:25 by gasselin          #+#    #+#             */
-/*   Updated: 2022/01/28 20:46:53 by gasselin         ###   ########.fr       */
+/*   Updated: 2022/01/28 23:23:09 by gasselin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,8 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define MAXSIDE 50
 
@@ -43,7 +45,7 @@ typedef struct s_pc {
 	int		crt_y;
     int     maps_counts;
     char    *diff_folder;
-    char    full_path[1024];
+    char    full_path[1000];
 
     // new_images
 	t_img	*img[2];
@@ -53,7 +55,11 @@ typedef struct s_pc {
 	char	myBoard[MAXSIDE][MAXSIDE];
 
     // list
-    char    *maps_lst[1024];
+    char    *maps_lst[1000];
+
+	// hints
+	int		hints_up[MAXSIDE][MAXSIDE];
+	int		hints_left[MAXSIDE][MAXSIDE];
 }   t_pc;
 
 #endif

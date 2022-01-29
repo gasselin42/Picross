@@ -6,7 +6,7 @@
 /*   By: gasselin <gasselin@student.42quebec.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/01/28 18:18:00 by gasselin          #+#    #+#             */
-/*   Updated: 2022/01/28 20:51:29 by gasselin         ###   ########.fr       */
+/*   Updated: 2022/01/28 23:25:00 by gasselin         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,38 @@ void	init_grids(t_pc *pc)
 	for (int i = 0; i < MAXSIDE; i++) {
 		memset(pc->realBoard[i], '\0', MAXSIDE);
 		memset(pc->myBoard[i], '\0', MAXSIDE);
+        memset(pc->hints_left[i], 0, MAXSIDE);
+        memset(pc->hints_up[i], 0, MAXSIDE);
 	}
+}
+
+// Recursive function to list all files in current and sub-directories
+void listFilesRecursively(char *basePath)
+{
+    char path[1000];
+    struct dirent *dp;
+    DIR *dir = opendir(basePath);
+
+    // Unable to open directory stream
+    if (!dir)
+        return;
+
+    while ((dp = readdir(dir)) != NULL)
+    {
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
+        {
+            printf("%s\n", dp->d_name);
+
+            // Construct new path from our base path
+            strcpy(path, basePath);
+            strcat(path, "/");
+            strcat(path, dp->d_name);
+
+            listFilesRecursively(path);
+        }
+    }
+
+    closedir(dir);
 }
 
 int    initialize_difficulty(t_pc *pc)
@@ -65,22 +96,73 @@ int    initialize_difficulty(t_pc *pc)
     return (0);
 }
 
+void get_hints(t_pc *pc)
+{
+    int index;
+    int count;
+
+    // hints_up
+    for (int i = 0; i < SIDE; i++) {
+        index = 0;
+        count = 0;
+        for (int j = 0; j < SIDE; j++) {
+            if (count > 0 && pc->realBoard[j][i] == 'X') {
+                pc->hints_up[i][index++] = count;
+                count = 0;
+            }
+            if (pc->realBoard[j][i] == 'O')
+                count++;
+        }
+        if (count > 0)
+            pc->hints_up[i][index] = count;
+    }
+
+    // hints_left
+    for (int i = 0; i < SIDE; i++) {
+        index = 0;
+        count = 0;
+        for (int j = 0; j < SIDE; j++) {
+            if (count > 0 && pc->realBoard[i][j] == 'X') {
+                pc->hints_left[i][index++] = count;
+                count = 0;
+            }
+            if (pc->realBoard[i][j] == 'O')
+                count++;
+        }
+        if (count > 0)
+            pc->hints_left[i][index] = count;
+    }
+}
+
 void choose_level(t_pc *pc)
 {
     struct dirent *entry;
     DIR *dir;
+    char tmp_path[1000];
+    int fd_check;
 
-    dir = opendir((const char *)pc->diff_folder);
+    dir = opendir(pc->diff_folder);
     while ((entry = readdir(dir)) != NULL) {
         if (strlen(entry->d_name) >= 5) {
             char *tmp = strnstr(entry->d_name, ".txt", strlen(entry->d_name));
             if (strlen(tmp) == 4) {
-                pc->maps_lst[pc->maps_counts] = strdup(entry->d_name);
-                pc->maps_counts++;
+                memset(tmp_path, '\0', 1000);
+                strcpy(tmp_path, pc->diff_folder);
+                strcat(tmp_path, entry->d_name);
+                
+                if ((fd_check = open(tmp_path, O_DIRECTORY)) == -1) {
+                    pc->maps_lst[pc->maps_counts] = strdup(entry->d_name);
+                    pc->maps_counts++;
+                }
+                else
+                    close(fd_check);
             }
         }
     }
     closedir(dir);
+
+    for (int i = 0; i < pc->maps_counts; i++)
+        printf("%s\n", pc->maps_lst[i]);
 
     if (pc->maps_counts == 0) {
         printf("No level available for this difficulty\n");
@@ -90,12 +172,14 @@ void choose_level(t_pc *pc)
     int map = rand() % pc->maps_counts;
 
     strcpy(pc->full_path, pc->diff_folder);
-    strcpy(pc->full_path + strlen(pc->diff_folder), pc->maps_lst[map]);
+    strcat(pc->full_path, pc->maps_lst[map]);
 
     FILE *fd = fopen(pc->full_path, "r");
     for (int i = 0; i < SIDE; i++)
         fscanf(fd, "%s\n", pc->realBoard[i]);
     fclose(fd);
+
+    get_hints(pc);
 
 }
 
